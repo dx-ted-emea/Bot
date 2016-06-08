@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
-using Microsoft.Bot.Connector.Utilities;
 using Newtonsoft.Json;
 using System.Web;
+using Microsoft.Bot.Builder.Dialogs;
 
 namespace SilhouetteBot_Application
 {
@@ -23,10 +23,16 @@ namespace SilhouetteBot_Application
         {
             if (message.Type == "Message")
             {
-                //call Luis
-                var responseLuis = Luis.ParseUserInput(message.Text).Result;
+                //Call dialog
+                // return our reply to the user
 
-                return message.CreateReplyMessage(responseLuis.entities[0].type);
+                return await Conversation.SendAsync(message, () => new SilhouetteDialog());
+
+
+                ////call Luis
+                //var responseLuis = Luis.ParseUserInput(message.Text).Result;
+
+                //return message.CreateReplyMessage(responseLuis.entities[0].type);
             }
             else
             {
