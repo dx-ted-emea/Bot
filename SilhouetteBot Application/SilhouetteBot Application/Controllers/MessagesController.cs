@@ -8,6 +8,7 @@ using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
 using Microsoft.Bot.Connector.Utilities;
 using Newtonsoft.Json;
+using System.Web;
 
 namespace SilhouetteBot_Application
 {
@@ -22,11 +23,10 @@ namespace SilhouetteBot_Application
         {
             if (message.Type == "Message")
             {
-                // calculate something for us to return
-                int length = (message.Text ?? string.Empty).Length;
+                //call Luis
+                var responseLuis = Luis.ParseUserInput(message.Text).Result;
 
-                // return our reply to the user
-                return message.CreateReplyMessage($"You sent {length} characters");
+                return message.CreateReplyMessage(responseLuis.entities[0].type);
             }
             else
             {
@@ -65,5 +65,7 @@ namespace SilhouetteBot_Application
 
             return null;
         }
+
+
     }
 }
