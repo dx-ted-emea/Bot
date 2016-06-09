@@ -24,7 +24,7 @@ namespace SilhouetteBot_Application
             if (message.Type == "Message")
             {
                 //Call dialog
-                // return our reply to the user
+                //return the reply to the user
 
                 return await Conversation.SendAsync(message, () => new SilhouetteDialog());
 

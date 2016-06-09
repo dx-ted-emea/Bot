@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Luis;
 using Microsoft.Bot.Builder.Luis.Models;
+using System.Net.Http;
+using Newtonsoft.Json;
 
 namespace SilhouetteBot_Application
 {
@@ -18,7 +20,15 @@ namespace SilhouetteBot_Application
         [LuisIntent("")]
         public async Task None(IDialogContext context, LuisResult result)
         {
-            string message = $"Sorry I did not understand: " + string.Join(", ", result.Intents.Select(i => i.Intent));
+            string message = "Sorry I did not understand";
+            await context.PostAsync(message);
+            context.Wait(MessageReceived);
+        }
+
+        [LuisIntent("greeting")]
+        public async Task Greet(IDialogContext context, LuisResult result)
+        {
+            string message = "Hi, what can I do for you?";
             await context.PostAsync(message);
             context.Wait(MessageReceived);
         }
@@ -26,90 +36,82 @@ namespace SilhouetteBot_Application
         [LuisIntent("get")]
         public async Task Get(IDialogContext context, LuisResult result)
         {
-            
-            await context.PostAsync(result.Entities[0].Type);
+            string deviceId = string.Empty;
+            string state = string.Empty;
 
+            foreach (var entity in result.Entities)
+            {
+                if (entity.Type == "deviceId")
+                {
+                    deviceId = entity.Entity;
+                }
+            }
+
+            if (deviceId != string.Empty)
+            {
+                state = await GetDeviceState(deviceId);
+
+
+                if (state != string.Empty)
+                {
+                    await context.PostAsync(state);
+                }
+                else
+                {
+                    await context.PostAsync("Device not found");
+                }
+            }
+            else
+            {
+                await context.PostAsync("What is the device id?");
+                
+            }
             context.Wait(MessageReceived);
         }
 
-        //        private readonly Dictionary<string, Alarm> alarmByWhat = new Dictionary<string, Alarm>();
-
-        //        public const string DefaultAlarmWhat = "default";
-
-        //        public bool TryFindAlarm(LuisResult result, out Alarm alarm)
-        //        {
-        //            alarm = null;
-
-        //            string what;
-
-        //            EntityRecommendation title;
-        //            if (result.TryFindEntity(Entity_Alarm_Title, out title))
-        //            {
-        //                what = title.Entity;
-        //            }
-        //            else
-        //            {
-        //                what = DefaultAlarmWhat;
-        //            }
-
-        //            return this.alarmByWhat.TryGetValue(what, out alarm);
-        //        }
-
-        //        public const string Entity_Alarm_Title = "builtin.alarm.title";
-        //        public const string Entity_Alarm_Start_Time = "builtin.alarm.start_time";
-        //        public const string Entity_Alarm_Start_Date = "builtin.alarm.start_date";
-
-
-
-
-
-        //        [LuisIntent("set")]
-        //        public async Task Set(IDialogContext context, LuisResult result)
-        //        {
-        //            Alarm alarm;
-        //            if (TryFindAlarm(result, out alarm))
-        //            {
-        //                await context.PostAsync($"found alarm {alarm}");
-        //            }
-        //            else
-        //            {
-        //                await context.PostAsync("did not find alarm");
-        //            }
-
-        //            context.Wait(MessageReceived);
-        //        }
-
-
-        //        [Serializable]
-        //        public sealed class Alarm : IEquatable<Alarm>
-        //        {
-        //            public DateTime When { get; set; }
-        //            public string What { get; set; }
-
-        //            public override string ToString()
-        //            {
-        //                return $"[{this.What} at {this.When}]";
-        //            }
-
-        //            public bool Equals(Alarm other)
-        //            {
-        //                return other != null
-        //                    && this.When == other.When
-        //                    && this.What == other.What;
-        //            }
-
-        //            public override bool Equals(object other)
-        //            {
-        //                return Equals(other as Alarm);
-        //            }
-
-        //            public override int GetHashCode()
-        //            {
-        //                return this.What.GetHashCode();
-        //            }
-        //        }
-        //    }
+        //public async Task MessageReceived(IDialogContext context, IAwaitable<Microsoft.Bot.Connector.Message> result)
+        //{
+        //    await context.PostAsync(context.ConversationData.ToString());
+        //    context.Wait(MessageReceived);
         //}
 
+
+        [LuisIntent("set")]
+        public async Task Set(IDialogContext context, LuisResult result)
+        {
+
+            string deviceId = string.Empty;
+            string state = string.Empty;
+
+            foreach (var entity in result.Entities)
+            {
+                if (entity.Type == "deviceId")
+                    deviceId = entity.Entity;
+                else if (entity.Type == "state")
+                    state = entity.Entity;
+            }
+
+            await context.PostAsync(string.Format("device {0} has state {1}", deviceId, state) );
+            context.Wait(MessageReceived);
+        }
+
+        public async Task<string> GetDeviceState(string deviceId)
+        {
+            using (var client = new HttpClient())
+            {
+                string uri = "http://silhouettecluster.westeurope.cloudapp.azure.com:9013/devices/" +deviceId;
+                HttpResponseMessage msg = await client.GetAsync(uri);
+
+                if (msg.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await msg.Content.ReadAsStringAsync();
+
+                    return jsonResponse;
+                }
+                else
+                    return "";
+            }
+           
+        }
     }
 }
